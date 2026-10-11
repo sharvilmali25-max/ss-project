@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Fourier Transform · Mobile Accelerometer Signal Analysis</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap">
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+--bg:#070b14;--card:rgba(255,255,255,.055);--bd:rgba(255,255,255,.12);--tx:#e8eefc;--mut:#8b9ab8;--x:#ff5d73;--y:#3ee89a;--z:#4da3ff;--m:#ffc857;--f:#c77dff}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:inherit}
+body{margin:0;background:radial-gradient(1000px 600px at 15% -10%,#1a2a55 0,transparent 60%),radial-gradient(800px 500px at 100% 20%,#2a1650 0,transparent 55%),var(--bg);color:var(--tx);font:15px/1.45 "Space Grotesk","Segoe UI",system-ui,-apple-system,Roboto,sans-serif;font-variant-numeric:tabular-nums;min-height:100%}
+h1,h2,h3{margin:0;font-weight:650;letter-spacing:.2px}
+.wrap{max-width:1180px;margin:0 auto;padding:16px 14px 60px}
+header{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:14px}
+h1{font-size:clamp(26px,6vw,40px);background:linear-gradient(90deg,#fff,#9cc2ff);-webkit-background-clip:text;background-clip:text;color:transparent}
+.sub{color:var(--mut);font-size:14px}
+.glass{background:var(--card);border:1px solid var(--bd);border-radius:16px;padding:14px;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:0 8px 30px rgba(0,0,0,.35)}
+.grid{display:grid;gap:12px;margin-top:12px}
+.g5{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+.g3{grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
+.g2{grid-template-columns:repeat(auto-fit,minmax(320px,1fr))}
+.lbl{color:var(--mut);font-size:12.5px}
+.big{font:600 26px/1.2 "SF Mono",Consolas,monospace;margin-top:4px}
+.tag{display:inline-block;font-size:11px;padding:1px 8px;border-radius:99px;border:1px solid var(--bd);color:var(--mut);margin-left:6px;vertical-align:middle}
+.tag.meas{color:#3ee89a;border-color:#3ee89a66}.tag.est{color:#ffc857;border-color:#ffc85766}
+.tag.gps{color:#3ee89a;border-color:#3ee89a66}
+body.man .tag.meas{font-size:0;color:#ffc857;border-color:#ffc85766}body.man .tag.meas:after{content:"Manual";font-size:11px}
+.dot.on.man{background:#ffc857}
+select,input[type=number]{font:inherit;padding:8px;border-radius:10px;background:#101830;color:var(--tx);border:1px solid var(--bd)}
+.mgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px 20px;margin-top:12px}
+.ctl{display:grid;grid-template-columns:1fr 84px;gap:4px 8px;align-items:center;font-size:13px;color:var(--mut)}
+.ctl input[type=number]{padding:5px 8px;width:84px}.ctl input[type=range]{grid-column:1/-1;width:100%;accent-color:#8a4dff}
+.chip{position:fixed;left:50%;bottom:calc(12px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:60;padding:7px 14px;border-radius:99px;font-size:13px;white-space:nowrap;background:rgba(14,20,38,.88);border:1px solid var(--bd);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:0 6px 24px rgba(0,0,0,.45)}
+.stats span{color:var(--mut);font-size:13px}.stats b{color:var(--tx);font-weight:600;margin-left:6px}
+button{font:inherit;color:var(--tx);background:rgba(255,255,255,.08);border:1px solid var(--bd);border-radius:10px;padding:9px 13px;cursor:pointer;transition:.18s}
+button:hover{background:rgba(255,255,255,.16)}button:focus-visible{outline:2px solid var(--z);outline-offset:2px}
+button.pri{background:linear-gradient(90deg,#2f6bff,#8a4dff);border:0;font-weight:600;padding:12px 20px}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.dot{width:10px;height:10px;border-radius:50%;background:#ff5d73;display:inline-block}
+.dot.on{background:#3ee89a;animation:pulse 1.2s infinite}
+@keyframes pulse{50%{box-shadow:0 0 0 7px #3ee89a22}}
+canvas{width:100%;height:170px;display:block;border-radius:10px;background:rgba(0,0,0,.28)}
+canvas.tall{height:260px}
+.warn{font-size:12.5px;color:#ffc857;background:#ffc8571a;border:1px solid #ffc85744;padding:8px 10px;border-radius:10px;margin-top:8px}
+.err{color:#ff8a9a}
+.flow{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:13px;margin-bottom:8px}
+.flow span{padding:3px 10px;border-radius:8px;background:rgba(255,255,255,.07)}
+.flow i{color:var(--mut);font-style:normal}
+/* menu */
+.menu{position:relative}
+.kebab{font-size:22px;line-height:1;padding:8px 12px}
+.drop{position:absolute;right:0;top:calc(100% + 8px);min-width:200px;background:rgba(18,24,42,.96);border:1px solid var(--bd);border-radius:12px;padding:6px;z-index:50;opacity:0;transform:translateY(-8px) scale(.97);transform-origin:top right;pointer-events:none;transition:.18s}
+.drop.open{opacity:1;transform:none;pointer-events:auto}
+.drop button{display:block;width:100%;text-align:left;background:none;border:0}
+.drop button:hover{background:rgba(255,255,255,.1)}
+/* phone */
+.stage{perspective:700px;height:230px;display:flex;align-items:center;justify-content:center}
+.phone{width:84px;height:160px;border-radius:14px;border:2px solid #9cc2ff;background:linear-gradient(135deg,#1c2a52,#0c1226);position:relative;transform-style:preserve-3d;transition:transform .08s linear;box-shadow:0 0 30px #4da3ff44}
+.phone:after{content:"";position:absolute;inset:8px;border-radius:8px;background:repeating-linear-gradient(0deg,#ffffff0d 0 2px,transparent 2px 6px)}
+.ax{position:absolute;font:700 12px monospace;left:50%;top:50%}
+.ax.x{color:var(--x);transform:translate(52px,-8px)}.ax.y{color:var(--y);transform:translate(-8px,-98px)}.ax.z{color:var(--z);transform:translate(-8px,-8px) translateZ(60px)}
+.phone:before{content:"";position:absolute;left:50%;top:50%;width:60px;height:2px;background:var(--x);box-shadow:0 0 6px var(--x)}
+.compass{width:min(240px,70vw);aspect-ratio:1;margin:auto;position:relative;border-radius:50%;border:2px solid var(--bd);background:radial-gradient(circle,#0c1226,#070b14)}
+.compass b{position:absolute;font-size:14px}
+.needle{position:absolute;left:50%;top:50%;width:4px;height:44%;margin-left:-2px;transform-origin:50% 100%;margin-top:-44%;background:linear-gradient(#ff5d73 50%,#e8eefc 50%);border-radius:3px;transition:transform .15s}
+.stat{font:600 15px "SF Mono",Consolas,monospace}
+.kv{display:grid;grid-template-columns:1fr auto;gap:4px 12px;font-size:14px}.kv span:nth-child(odd){color:var(--mut)}.kv span:nth-child(even){text-align:right;font-family:Consolas,monospace}
+#arrow{font-size:56px;transition:transform .2s;display:inline-block}
+.tw{max-height:260px;overflow:auto;margin-top:8px}
+table{width:100%;border-collapse:collapse;font:12.5px Consolas,monospace;min-width:760px}
+th,td{padding:4px 8px;text-align:right;border-bottom:1px solid #ffffff14}th{position:sticky;top:0;background:#101830;color:var(--mut)}
+.page{display:none}.page.show{display:block;animation:fade .3s}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}}
+ul{padding-left:20px;margin:6px 0}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style></head><body>
+<div class="wrap">
+<header>
+ <div><h1>Fourier Transform</h1><div class="sub">Mobile Accelerometer Signal Analysis</div></div>
+ <div class="menu" id="menu">
+  <button class="kebab" id="kb" aria-label="Menu" aria-haspopup="true">⋮</button>
+  <div class="drop" id="drop" role="menu">
+   <button data-go="about">📘 About Project</button>
+   <button data-go="dash">📊 Dashboard</button>
+  </div>
+ </div>
+</header>
+
+<section class="page" id="about">
+ <div class="glass">
+  <div class="lbl">Project Name</div><h2>Fourier Transform</h2>
+  <div class="sub">Mobile Accelerometer Signal Analysis</div>
+  <h3 style="margin-top:16px">About the Project</h3>
+  <p>This project captures real-time acceleration signals from a mobile phone using its built-in accelerometer. The X, Y, and Z axis signals are displayed in the time domain and analyzed using Fast Fourier Transform (FFT) to identify their frequency components.</p>
+  <h3>Main Features</h3>
+  <ul><li>Real-time mobile accelerometer data</li><li>X, Y and Z axis signals</li><li>Combined acceleration signal</li><li>Estimated speed</li><li>Direction/orientation</li><li>Time-domain waveform</li><li>Frequency-domain FFT spectrum</li><li>Real-time signal analysis</li><li>Data recording and CSV export</li></ul>
+  <h3>Experiment Objective</h3>
+  <p>To acquire an acceleration signal from a mobile phone, study its time-domain waveform, and use Fourier Transform to analyze the frequency components present in the signal.</p>
+  <button class="pri" data-go="dash">Back to Website</button>
+ </div>
+</section>
+
+<section class="page show" id="dash">
+ <div class="glass row" style="justify-content:space-between">
+  <div class="row"><button class="pri" id="conn">Connect Mobile Sensor</button>
+   <span><span class="dot" id="cdot"></span> <b id="cst">Not connected</b></span></div>
+  <div class="sub" id="live">No sensor data yet · values stay at zero until a real sensor responds</div>
+ </div>
+ <div id="msg" class="warn err" style="display:none"></div>
+ <details class="glass" id="diag" style="margin-top:12px"><summary style="cursor:pointer"><b>Connection check</b> <span class="lbl" id="dsum">tap to see why the sensor may not connect</span></summary>
+  <div class="kv" style="margin-top:8px"><span>Secure page (HTTPS)</span><span id="d1">—</span><span>Page inside a frame</span><span id="d2">—</span><span>Motion API available</span><span id="d3">—</span><span>Permission</span><span id="d4">—</span><span>Sensor events received</span><span id="d5">0</span></div>
+  <div class="row" style="margin-top:10px"><button id="dopen">Open in full page</button></div>
+  <div class="lbl" id="dhelp" style="margin-top:8px"></div>
+ </details>
+
+ <div class="glass" style="margin-top:12px">
+  <div class="row" style="justify-content:space-between">
+   <h3>Manual Signal Generator <span class="tag">no sensor needed</span></h3>
+   <label class="row" style="gap:8px;cursor:pointer"><input type="checkbox" id="mon" style="width:20px;height:20px"><b>Use manual signal</b></label>
+  </div>
+  <div class="lbl" style="margin-top:4px">Set the values below to drive the cards, graphs, speed and FFT without a phone. While this is on, real sensor input is ignored and readings are labelled Manual.</div>
+  <div id="mbody" style="opacity:.6;transition:.2s">
+   <div class="row" style="margin-top:10px">
+    <label class="lbl">Waveform <select id="mw"><option value="sine">Sine</option><option value="square">Square</option><option value="triangle">Triangle</option><option value="saw">Sawtooth</option><option value="dc">Constant (DC)</option><option value="noise">Random noise</option></select></label>
+    <label class="row lbl" style="gap:6px"><input type="checkbox" id="mg" checked>Add gravity to Z (9.81 m/s²)</label>
+   </div>
+   <div class="row" style="margin-top:10px"><span class="lbl">Presets</span><button data-p="walk">Walking</button><button data-p="vib">Motor vibration</button><button data-p="two">Two tones</button><button data-p="shake">Shake</button><button data-p="still">Rest</button></div>
+   <div class="mgrid" id="mc"></div>
+  </div>
+ </div>
+
+ <div class="grid g5">
+  <div class="glass"><div class="lbl">X Acceleration <span class="tag meas">Measured</span></div><div class="big" style="color:var(--x)" id="cx">X: 0.00 m/s²</div></div>
+  <div class="glass"><div class="lbl">Y Acceleration <span class="tag meas">Measured</span></div><div class="big" style="color:var(--y)" id="cy">Y: 0.00 m/s²</div></div>
+  <div class="glass"><div class="lbl">Z Acceleration <span class="tag meas">Measured</span></div><div class="big" style="color:var(--z)" id="cz">Z: 0.00 m/s²</div></div>
+  <div class="glass"><div class="lbl">Speed <span class="tag est" id="stag">Estimated</span></div><div class="big" id="cs">0.00 km/h</div><div class="lbl" id="csk">0.00 m/s</div></div>
+  <div class="glass"><div class="lbl">Direction <span class="tag meas">Measured</span></div><div class="big" id="cd">0°</div></div>
+ </div>
+
+ <div class="grid g5">
+  <div class="glass"><div class="lbl">X Speed <span class="tag est">Estimated</span></div><div class="big" style="color:var(--x)" id="vx">Vx: 0.00 km/h</div></div>
+  <div class="glass"><div class="lbl">Y Speed <span class="tag est">Estimated</span></div><div class="big" style="color:var(--y)" id="vy">Vy: 0.00 km/h</div></div>
+  <div class="glass"><div class="lbl">Z Speed <span class="tag est">Estimated</span></div><div class="big" style="color:var(--z)" id="vz">Vz: 0.00 km/h</div></div>
+ </div>
+ <div class="glass row" style="margin-top:12px;gap:18px">
+  <label class="row lbl" style="gap:6px"><input type="checkbox" id="rawc">Show raw signal with gravity</label>
+  <label class="row lbl" style="gap:6px"><input type="checkbox" id="isoc">Isolate dominant axis (filter)</label>
+  <span class="lbl">Default: gravity removed, so tilting the phone does not leak into other axes.</span>
+ </div>
+ <div class="grid g3">
+  <div class="glass"><div class="lbl">X-Axis Signal</div><canvas id="sx"></canvas></div>
+  <div class="glass"><div class="lbl">Y-Axis Signal</div><canvas id="sy"></canvas></div>
+  <div class="glass"><div class="lbl">Z-Axis Signal</div><canvas id="sz"></canvas></div>
+ </div>
+ <div class="glass grid" style="margin-top:12px"><div class="lbl">Combined Accelerometer Signal · A = √(X² + Y² + Z²)</div><canvas id="sm"></canvas></div>
+
+ <div class="glass" style="margin-top:12px">
+  <h3>Fourier Transform Analysis</h3>
+  <div class="flow"><span>Time Domain</span><i>→</i><span>FFT</span><i>→</i><span>Frequency Domain</span></div>
+  <div class="row" style="margin-bottom:8px">
+   <button class="pri" id="runfft">Run FFT Analysis</button><button id="stopfft">Stop Analysis</button>
+   <select id="src" style="font:inherit;padding:9px;border-radius:10px;background:#101830;color:var(--tx);border:1px solid var(--bd)"><option value="m">Combined</option><option value="x">X axis</option><option value="y">Y axis</option><option value="z">Z axis</option></select>
+   <span class="stat" id="fres">Dominant: — Hz · Peak: —</span>
+  </div>
+  <canvas id="fft" class="tall"></canvas>
+  <canvas id="sg" style="height:120px;margin-top:8px"></canvas><div class="lbl">Spectrogram · frequency (vertical, 0 to Nyquist) against time; brighter means stronger.</div>
+  <div class="row stats" style="margin-top:8px;gap:16px"><span>RMS (AC)<b id="s1">0</b></span><span>Peak-to-peak<b id="s2">0</b></span><span>Mean<b id="s3">0</b></span><span>Period<b id="s4">—</b></span><span>Resolution<b id="s5">—</b></span></div>
+  <div class="lbl" style="margin-top:6px">Frequency Spectrum · 256-point FFT, Hann window, DC removed. Shake the phone to see peaks move.</div>
+ </div>
+
+ <div class="grid g2">
+  <div class="glass"><h3>Orientation &amp; Compass</h3>
+   <div class="stage"><div class="phone" id="phone"><span class="ax x">X→</span><span class="ax y">Y↑</span><span class="ax z">Z↗</span></div></div>
+   <div class="compass" id="cmp"><b style="left:50%;top:4px;transform:translateX(-50%);color:#ff5d73">N</b><b style="left:50%;bottom:4px;transform:translateX(-50%)">S</b><b style="right:8px;top:50%;transform:translateY(-50%)">E</b><b style="left:8px;top:50%;transform:translateY(-50%)">W</b><div class="needle" id="needle"></div></div>
+   <div class="big" style="text-align:center" id="curdir">Current Direction: 0°</div>
+   <div class="kv" style="margin-top:8px"><span>Roll (X)</span><span id="roll">0.0°</span><span>Pitch (Y)</span><span id="pitch">0.0°</span><span>Yaw (Z)</span><span id="yaw">0.0°</span></div>
+  </div>
+  <div class="glass"><h3>Live Mobile Motion</h3>
+   <div class="row" style="margin:8px 0"><div class="big" id="mst">🟢 Stationary</div></div>
+   <div class="kv">
+    <span>Dominant Axis</span><span id="dom">—</span>
+    <span>X / Y / Z Movement</span><span id="lvl">LOW / LOW / LOW</span>
+    <span>Total Acceleration</span><span id="tot">0.00 m/s²</span>
+    <span>Speed <span class="tag" id="stag2">Estimated</span></span><span id="sp2">0.00 m/s · 0.00 km/h</span>
+    <span>Movement Direction</span><span id="mdir">—</span>
+    <span>Heading</span><span id="hd">0°</span>
+    <span>Distance <span class="tag gps">GPS</span></span><span id="dist">GPS unavailable</span>
+   </div>
+   <div style="text-align:center;margin-top:8px"><span id="arrow">•</span></div>
+   <div class="warn">Accelerometer-only speed is an estimate: acceleration must be integrated over time, so error accumulates (drift). GPS speed and distance are used when available and marked Measured. Use Reset Speed to zero the estimate.</div>
+  </div>
+ </div>
+
+ <div class="grid g2">
+  <div class="glass"><h3>Gyroscope <span class="tag meas">Measured</span></h3><div class="lbl" id="gtxt">Angular velocity X/Y/Z: 0 / 0 / 0 °/s</div><canvas id="gg" style="height:150px"></canvas></div>
+  <div class="glass"><h3>GPS</h3><div class="row" style="margin:6px 0"><button id="gpsb">Enable GPS</button></div>
+   <div class="kv"><span>GPS Speed</span><span id="gs">GPS unavailable</span><span>Heading</span><span id="gh">—</span><span>Accuracy</span><span id="ga">—</span><span>Altitude</span><span id="gal">—</span></div>
+   <div class="lbl" style="margin-top:8px">GPS is optional and never blocks the accelerometer experiment.</div></div>
+ </div>
+
+ <div class="glass" style="margin-top:12px"><h3>3D Path <span class="tag est">Estimated</span></h3>
+  <div class="row" style="margin:8px 0"><button class="pri" id="pstart">Start Path</button><button id="pstop">Stop Path</button><button id="pplay">Play</button><button id="pclr">Clear Path</button><button id="pview">Reset View</button><span class="lbl" id="pinfo">Idle · 0 points</span></div>
+  <canvas id="p3" style="height:340px;touch-action:none;cursor:grab"></canvas>
+  <input type="range" id="pscr" min="0" max="0" value="0" style="width:100%;accent-color:#8a4dff;margin-top:8px" aria-label="Path time">
+  <div class="kv" style="margin-top:6px"><span>Time</span><span id="qt">—</span><span>Position X / Y / Z</span><span id="qp">—</span><span>Speed</span><span id="qs">—</span><span>Speed X / Y / Z</span><span id="qv">—</span><span>Start → End</span><span id="qse">—</span><span>Distance so far</span><span id="ql">—</span></div>
+  <div class="lbl" style="margin-top:6px">Drag to rotate, pinch or scroll to zoom, tap the path or drag the slider to see the values at that moment. The line colour shows speed.</div>
+  <div class="warn">Position is estimated by integrating acceleration twice, so it drifts quickly. Use short, smooth movements that start at rest. Coordinates are in the phone's own X/Y/Z axes, in metres, starting at (0, 0, 0).</div>
+ </div>
+ <div class="glass" style="margin-top:12px"><h3>Lap Recorder <span class="tag">splits every signal into laps</span></h3>
+  <div class="row" style="margin:8px 0">
+   <label class="lbl">Lap length <input type="number" id="llen" value="5" min="1" max="60" step="1" style="width:70px"> s</label>
+   <button class="pri" id="lstart">Start Laps</button><button id="lstop">Stop Laps</button><button id="lclr">Clear Laps</button>
+   <span class="lbl" id="linfo">Idle · 0 laps</span></div>
+  <div class="row lbl" style="gap:14px">Include:
+   <label class="row" style="gap:4px"><input type="checkbox" class="lg" value="acc" checked>Acceleration</label>
+   <label class="row" style="gap:4px"><input type="checkbox" class="lg" value="gyro" checked>Gyroscope</label>
+   <label class="row" style="gap:4px"><input type="checkbox" class="lg" value="spd" checked>Speed (km/h)</label>
+   <label class="row" style="gap:4px"><input type="checkbox" class="lg" value="ori" checked>Orientation</label></div>
+  <div class="row" style="margin:8px 0"><button id="lzip">All laps ZIP</button><button id="lacsv">All laps CSV</button><button id="lajson">All laps JSON</button><button id="lsum">Summary CSV</button><button id="lfft">All FFT CSV</button></div>
+  <div class="tw"><table style="min-width:540px"><thead><tr><th>Lap</th><th>Start</th><th>Samples</th><th>Rate</th><th>Peak Hz (A)</th><th>RMS (A)</th><th>Download</th></tr></thead><tbody id="ltb"></tbody></table></div>
+ </div>
+ <div class="glass" style="margin-top:12px"><h3>Recorded Data</h3>
+  <div class="row" style="margin:8px 0">
+   <button id="rs">Start Recording</button><button id="rp">Pause Recording</button><button id="rx">Stop Recording</button><button id="rc">Clear Data</button><button id="rv">Reset Speed</button><button id="rf">Run FFT</button><button id="dl">Download CSV</button>
+   <span class="lbl" id="rinfo">Not recording · 0 rows</span></div>
+  <div class="tw"><table><thead><tr><th>Time (s)</th><th>X</th><th>Y</th><th>Z</th><th>Vx (km/h)</th><th>Vy (km/h)</th><th>Vz (km/h)</th><th>Speed (km/h)</th><th>Direction (°)</th><th>Source</th></tr></thead><tbody id="tb"></tbody></table></div>
+ </div>
+
+ <div class="glass" style="margin-top:12px"><div class="lbl">Experiment</div><h3>Study of Mobile Accelerometer Signal Using Fourier Transform</h3>
+  <p><b>Objective:</b> “To acquire acceleration signals from a mobile phone, observe the signals in the time domain, and analyze their frequency components using Fast Fourier Transform (FFT).”</p>
+  <div class="flow"><span>Phone sensors</span><i>→</i><span>Sensor fusion</span><i>→</i><span>Motion &amp; axis detection</span><i>→</i><span>Speed + direction</span><i>→</i><span>Time signals</span><i>→</i><span>FFT</span></div></div>
+</section>
+</div>
+
+<div class="chip" id="chip">⚪ No signal</div>
+<script>
+const $=id=>document.getElementById(id),N=256;
+// ---------- navigation + menu ----------
+const drop=$('drop');
+$('kb').onclick=e=>{e.stopPropagation();drop.classList.toggle('open')};
+document.addEventListener('click',e=>{if(!$('menu').contains(e.target))drop.classList.remove('open')});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')drop.classList.remove('open')});
+document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{
+ document.querySelectorAll('.page').forEach(p=>p.classList.toggle('show',p.id===b.dataset.go));
+ drop.classList.remove('open');window.scrollTo({top:0,behavior:'smooth'})});
+
+// ---------- state ----------
+const z=()=>new Array(N).fill(0);
+const IOS=typeof DeviceMotionEvent!=='undefined'&&typeof DeviceMotionEvent.requestPermission==='function';
+const D={ev:0,tried:false,perm:IOS?'not requested':'not needed'};
+const B={x:z(),y:z(),z:z(),m:z(),gx:z(),gy:z(),gz:z()};
+const S={fs:0,last:0,lastData:0,a:[0,0,0],lin:[0,0,0],grav:[0,0,0],hx:[0,0,0],hy:[0,0,0],ex:[0,0,0],sig:[0,0,0],v:[0,0,0],gyro:[0,0,0],rpy:[0,0,0],head:0,gps:null,dist:0,lastPos:null,fft:true,rec:false,paused:false,rows:[],t0:0,lastRow:0,connected:false,peak:{f:0,m:0},domf:0};
+const push=(k,v)=>{B[k].push(v);B[k].shift()};
+const f2=v=>v.toFixed(2);
+
+// ---------- sensors ----------
+function onMotion(e){
+ if(S.manual&&!e._m)return;
+ const g=e.accelerationIncludingGravity,l=e.acceleration,r=e.rotationRate;
+ const src=g&&g.x!=null?g:(l&&l.x!=null?l:null);if(!src)return;
+ const now=performance.now(),dt=S.last?(now-S.last)/1000:0;S.last=now;S.lastData=now;if(!e._m)D.ev++;
+ if(dt>0&&dt<1)S.fs=S.fs?S.fs*.9+.1/dt:1/dt;
+ const sg=(src===g&&IOS&&!e._m)?-1:1;S.a=[src.x*sg,src.y*sg,src.z*sg];
+ if(l&&l.x!=null)S.lin=[l.x,l.y,l.z];
+ else{for(let i=0;i<3;i++){S.grav[i]=.98*S.grav[i]+.02*S.a[i];S.lin[i]=S.a[i]-S.grav[i]}}
+ let sg2=S.raw?S.a.slice():S.lin.slice();
+ if(!S.raw){for(let i=0;i<3;i++){const y=sg2[i]-S.hx[i]+.99*S.hy[i];S.hx[i]=sg2[i];S.hy[i]=y;sg2[i]=y}}
+ const ac=S.raw?S.lin.slice():sg2.slice();
+ if(S.iso&&!S.raw){for(let i=0;i<3;i++)S.ex[i]=.9*S.ex[i]+.1*Math.abs(sg2[i]);const d=Math.max(...S.ex);for(let i=0;i<3;i++)if(S.ex[i]<.35*d){sg2[i]*=.15;ac[i]*=.15}}
+ S.sig=sg2;push('x',sg2[0]);push('y',sg2[1]);push('z',sg2[2]);push('m',Math.hypot(...sg2));
+ if(r){S.gyro=[r.beta||0,r.gamma||0,r.alpha||0]}
+ push('gx',S.gyro[0]);push('gy',S.gyro[1]);push('gz',S.gyro[2]);
+ // velocity estimate (drift-prone); damp when nearly still
+ const still=Math.hypot(...S.lin)<.25;
+ for(let i=0;i<3;i++){const q=Math.abs(ac[i])<.15?0:ac[i];S.v[i]=q?S.v[i]+q*dt:S.v[i]*.93}
+ if(dt){record(now);lapPush(now);pathPush(now,dt)}
+}
+function onOri(e){
+ if(S.manual)return;
+ if(e.type==='deviceorientationabsolute'){if(e.alpha==null)return;S.abs=1}else if(S.abs&&e.webkitCompassHeading==null)return;
+ S.rpy=[e.gamma||0,e.beta||0,e.alpha||0];
+ S.head=e.webkitCompassHeading!=null?e.webkitCompassHeading:(e.alpha!=null?(360-e.alpha)%360:0);
+}
+async function connect(){
+ const msg=$('msg');msg.style.display='none';
+ if(!window.DeviceMotionEvent){return fail('This browser does not support the DeviceMotion API. Open the page in Chrome or Safari on a phone.')}
+ try{
+  if(typeof DeviceMotionEvent.requestPermission==='function'){
+   const ask=[DeviceMotionEvent.requestPermission()];if(typeof DeviceOrientationEvent!=='undefined'&&typeof DeviceOrientationEvent.requestPermission==='function')ask.push(DeviceOrientationEvent.requestPermission());const r=await Promise.all(ask);D.perm=r.every(x=>x==='granted')?'granted':'denied';
+   
+   if(D.perm!=='granted')return fail('Motion permission was denied. Allow motion access in browser settings and try again.');
+  }
+ }catch(err){D.perm='error';return fail('Permission request failed: '+err.message+'. Sensors need HTTPS and a tap on the button.')}
+ D.tried=true;window.addEventListener('devicemotion',onMotion);
+ window.addEventListener('deviceorientationabsolute',onOri);window.addEventListener('deviceorientation',onOri);
+ $('cst').textContent='Waiting for sensor…';
+ setTimeout(()=>{if(!S.lastData)fail('No sensor data received. This device or browser has no accelerometer, or sensor access is blocked (try opening the page directly in the phone browser over HTTPS).')},2500);
+}
+function fail(t){const m=$('msg');if(window.self!==window.top)t+=' This page is running inside a frame, which blocks motion sensors. Open it as a full page (see Connection check).';m.textContent=t;m.style.display='block';$('cst').textContent='Not connected';$('diag').open=true}
+$('conn').onclick=connect;
+$('gpsb').onclick=()=>{
+ if(!navigator.geolocation){$('gs').textContent='GPS unavailable';return}
+ navigator.geolocation.watchPosition(p=>{
+  const c=p.coords;S.gps={sp:c.speed,hd:c.heading,acc:c.accuracy,alt:c.altitude,t:Date.now()};
+  if(S.lastPos&&c.accuracy<30){const d=hav(S.lastPos,c);if(d>c.accuracy*.5)S.dist+=d,S.lastPos=c}else if(!S.lastPos)S.lastPos=c;
+ },()=>{S.gps=null;$('gs').textContent='GPS unavailable'},{enableHighAccuracy:true,maximumAge:1000});
+};
+function hav(a,b){const R=6371000,t=Math.PI/180,dl=(b.latitude-a.latitude)*t,dn=(b.longitude-a.longitude)*t;
+ const h=Math.sin(dl/2)**2+Math.cos(a.latitude*t)*Math.cos(b.latitude*t)*Math.sin(dn/2)**2;return 2*R*Math.asin(Math.sqrt(h))}
+
+// ---------- FFT ----------
+function fft(re,im){const n=re.length;
+ for(let i=1,j=0;i<n;i++){let b=n>>1;for(;j&b;b>>=1)j^=b;j^=b;if(i<j){[re[i],re[j]]=[re[j],re[i]];[im[i],im[j]]=[im[j],im[i]]}}
+ for(let len=2;len<=n;len<<=1){const a=-2*Math.PI/len,wr=Math.cos(a),wi=Math.sin(a);
+  for(let i=0;i<n;i+=len){let cr=1,ci=0;for(let k=0;k<len/2;k++){
+   const u=i+k,v=u+len/2,tr=re[v]*cr-im[v]*ci,ti=re[v]*ci+im[v]*cr;
+   re[v]=re[u]-tr;im[v]=im[u]-ti;re[u]+=tr;im[u]+=ti;[cr,ci]=[cr*wr-ci*wi,cr*wi+ci*wr]}}}}
+let spec=new Array(N/2).fill(0);
+function computeFFT(){
+ const d=B[$('src').value],mean=d.reduce((a,b)=>a+b,0)/N,re=d.map((v,i)=>(v-mean)*(.5-.5*Math.cos(2*Math.PI*i/(N-1)))),im=new Array(N).fill(0);
+ fft(re,im);spec=spec.map((_,i)=>Math.hypot(re[i],im[i])*2/N*2);
+ let pi=1;for(let i=2;i<N/2;i++)if(spec[i]>spec[pi])pi=i;
+ const fs=S.fs||50;S.peak={f:pi*fs/N,m:spec[pi]};
+}
+$('runfft').onclick=()=>{S.fft=true};$('rf').onclick=()=>{S.fft=true};$('stopfft').onclick=()=>{S.fft=false};
+
+// ---------- recording ----------
+function record(now){
+ if(!S.rec||S.paused||now-S.lastRow<100)return;S.lastRow=now;
+ S.rows.push([((now-S.t0)/1000).toFixed(2),...S.sig.map(f2),...S.v.map(v=>f2(v*3.6)),f2(curSpeed().v*3.6),S.head.toFixed(0),S.manual?'Manual':'Sensor']);
+}
+$('rs').onclick=()=>{if(!S.rec){S.rec=true;S.t0=performance.now()}S.paused=false};
+$('rp').onclick=()=>{S.paused=true};
+$('rx').onclick=()=>{S.rec=false;S.paused=false};
+$('rc').onclick=()=>{S.rows=[];$('tb').innerHTML=''};
+$('rv').onclick=()=>{S.v=[0,0,0];S.dist=0;S.lastPos=null};
+$('dl').onclick=()=>{
+ const csv='Time_s,X_ms2,Y_ms2,Z_ms2,Vx_kmh,Vy_kmh,Vz_kmh,Speed_kmh,Direction_deg,Source\n'+S.rows.map(r=>r.join(',')).join('\n');
+ const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='accelerometer_experiment.csv';
+ document.body.appendChild(a);a.click();a.remove()};
+
+// ---------- analysis ----------
+const rms=(k,n=30)=>{const s=B[k].slice(-n);const m=s.reduce((a,b)=>a+b,0)/n;return Math.sqrt(s.reduce((a,b)=>a+(b-m)**2,0)/n)};
+const lvl=v=>v<.4?'LOW':v<1.8?'MEDIUM':'HIGH';
+function curSpeed(){
+ const g=S.gps;
+ if(g&&g.sp!=null&&Date.now()-g.t<4000)return{v:g.sp,src:'GPS'};
+ return{v:Math.hypot(...S.v),src:'Est'};
+}
+function dirName(){
+ const [x,y]=S.sig,mag=Math.hypot(x,y);
+ if(mag<.8)return{n:'—',a:'•',deg:0};
+ const ang=(Math.atan2(x,y)*180/Math.PI+360)%360,i=Math.round(ang/45)%8;
+ return{n:['Forward','Forward-Right','Right','Backward-Right','Backward','Backward-Left','Left','Forward-Left'][i],a:'⬆',deg:ang};
+}
+// ---------- drawing ----------
+function fit(c){const r=c.getBoundingClientRect(),d=devicePixelRatio||1;
+ if(c.width!==Math.round(r.width*d)){c.width=Math.round(r.width*d);c.height=Math.round(r.height*d)}return d}
+function scope(id,series,unit,lbl){
+ const c=$(id),d=fit(c),g=c.getContext('2d'),W=c.width,H=c.height,pl=46*d,pb=22*d,pt=6*d,pr=8*d;
+ g.clearRect(0,0,W,H);g.font=`${11*d}px sans-serif`;
+ let lo=Infinity,hi=-Infinity;series.forEach(s=>s.d.forEach(v=>{lo=Math.min(lo,v);hi=Math.max(hi,v)}));
+ const pad=Math.max((hi-lo)*.15,1);lo-=pad;hi+=pad;
+ const X=i=>pl+(W-pl-pr)*i/(N-1),Y=v=>pt+(H-pt-pb)*(1-(v-lo)/(hi-lo));
+ g.strokeStyle='#ffffff14';g.fillStyle='#8b9ab8';g.lineWidth=1;
+ for(let i=0;i<=4;i++){const v=lo+(hi-lo)*i/4,y=Y(v);g.beginPath();g.moveTo(pl,y);g.lineTo(W-pr,y);g.stroke();g.fillText(v.toFixed(1),4*d,y+4*d)}
+ const T=N/(S.fs||50);
+ for(let i=0;i<=4;i++){const x=pl+(W-pl-pr)*i/4;g.beginPath();g.moveTo(x,pt);g.lineTo(x,H-pb);g.stroke();g.fillText((-T*(1-i/4)).toFixed(1)+'s',x-10*d,H-6*d)}
+ series.forEach(s=>{g.strokeStyle=s.c;g.lineWidth=1.8*d;g.shadowColor=s.c;g.shadowBlur=6*d;g.beginPath();s.d.forEach((v,i)=>i?g.lineTo(X(i),Y(v)):g.moveTo(X(i),Y(v)));g.stroke()});
+ g.shadowBlur=0;g.fillStyle='#e8eefc';g.textAlign='right';
+ g.fillText(`${lbl} ${series[0].d[N-1].toFixed(2)} ${unit} · ${S.fs?S.fs.toFixed(0):'--'} Hz`,W-pr-4*d,pt+12*d);g.textAlign='left';
+}
+function drawSpec(){
+ const c=$('fft'),d=fit(c),g=c.getContext('2d'),W=c.width,H=c.height,pl=46*d,pb=24*d,pt=8*d,pr=8*d;
+ g.clearRect(0,0,W,H);g.font=`${11*d}px sans-serif`;
+ const fs=S.fs||50,mx=Math.max(...spec,.5),n=N/2,bw=(W-pl-pr)/n;
+ g.strokeStyle='#ffffff14';g.fillStyle='#8b9ab8';
+ for(let i=0;i<=4;i++){const y=pt+(H-pt-pb)*i/4;g.beginPath();g.moveTo(pl,y);g.lineTo(W-pr,y);g.stroke();g.fillText((mx*(1-i/4)).toFixed(2),4*d,y+4*d)}
+ for(let i=0;i<=5;i++){const x=pl+(W-pl-pr)*i/5;g.fillText((fs/2*i/5).toFixed(0)+' Hz',x-12*d,H-8*d)}
+ const gr=g.createLinearGradient(0,pt,0,H-pb);gr.addColorStop(0,'#c77dff');gr.addColorStop(1,'#2f6bff55');g.fillStyle=gr;
+ spec.forEach((v,i)=>{const h=(H-pt-pb)*v/mx;g.fillRect(pl+i*bw,H-pb-h,Math.max(bw-1,1),h)});
+ if(S.fft&&S.peak.m>.02){const px=pl+(S.peak.f/(fs/2))*(W-pl-pr),py=H-pb-(H-pt-pb)*S.peak.m/mx,r=px>W*.7;g.strokeStyle='#ffc857';g.setLineDash([4*d,4*d]);g.beginPath();g.moveTo(px,pt+18*d);g.lineTo(px,H-pb);g.stroke();g.setLineDash([]);g.fillStyle='#ffc857';g.textAlign=r?'right':'left';g.fillText(S.peak.f.toFixed(2)+' Hz',px+(r?-6:6)*d,Math.max(py,pt+30*d));g.textAlign='left'}
+ g.fillStyle='#e8eefc';g.fillText('Frequency (Hz) →   Magnitude ↑',pl+6*d,pt+12*d);
+}
+// ---------- main loop ----------
+let tick=0;
+function frame(ts){
+ scope('sx',[{d:B.x,c:'#ff5d73'}],'m/s²','X');scope('sy',[{d:B.y,c:'#3ee89a'}],'m/s²','Y');scope('sz',[{d:B.z,c:'#4da3ff'}],'m/s²','Z');
+ scope('sm',[{d:B.m,c:'#ffc857'}],'m/s²','A');
+ scope('gg',[{d:B.gx,c:'#ff5d73'},{d:B.gy,c:'#3ee89a'},{d:B.gz,c:'#4da3ff'}],'°/s','Gyro X');
+ if(S.fft&&ts-tick>60){computeFFT();}
+ drawSpec();drawSG(ts);draw3D();
+ if(ts-tick>100){tick=ts;ui()}
+ requestAnimationFrame(frame);
+}
+function ui(){
+ const live=S.lastData&&performance.now()-S.lastData<1000;
+ const man=S.manual&&live;document.body.classList.toggle('man',!!man);$('chip').textContent=live?(man?'🟡 Manual signal · ':'🟢 Live sensor · ')+S.fs.toFixed(0)+' Hz':'⚪ No signal';
+ $('cdot').className='dot'+(live?' on':'')+(man?' man':'');$('cst').textContent=live?(man?'🟡 Manual Signal Active':'🟢 Mobile Connected'):(S.lastData?'Sensor stalled':$('cst').textContent.replace('🟢 ',''));
+ $('live').textContent=live?(man?`Manual signal · simulated data, not from a sensor · ${S.fs.toFixed(0)} Hz`:`Receiving real sensor data · ${S.fs.toFixed(0)} Hz`):'No sensor data yet · values stay at zero until a real sensor responds';
+ $('live').style.color=man?'#ffc857':live?'#3ee89a':'';
+ const [x,y,zz]=S.sig;
+ $('cx').textContent='X: '+f2(x)+' m/s²';$('cy').textContent='Y: '+f2(y)+' m/s²';$('cz').textContent='Z: '+f2(zz)+' m/s²';
+ const sp=curSpeed(),tag=sp.src==='GPS'?'Measured (GPS)':'Estimated';
+ [$('stag'),$('stag2')].forEach(t=>{t.textContent=tag;t.className='tag '+(sp.src==='GPS'?'meas':'est')});
+ $('cs').textContent=f2(sp.v*3.6)+' km/h';$('csk').textContent=f2(sp.v)+' m/s';['x','y','z'].forEach((k,i)=>$('v'+k).textContent='V'+k+': '+f2(S.v[i]*3.6)+' km/h');
+ $('cd').textContent=S.head.toFixed(0)+'°';$('curdir').textContent='Current Direction: '+S.head.toFixed(0)+'°';$('hd').textContent=S.head.toFixed(0)+'°';
+ $('needle').style.transform=`rotate(${S.head}deg)`;
+ const [r,p,w]=S.rpy;$('roll').textContent=r.toFixed(1)+'°';$('pitch').textContent=p.toFixed(1)+'°';$('yaw').textContent=w.toFixed(1)+'°';
+ $('phone').style.transform=`rotateX(${-p}deg) rotateY(${r}deg) rotateZ(${-w}deg)`;
+ $('gtxt').textContent=`Angular velocity X/Y/Z: ${S.gyro.map(v=>v.toFixed(0)).join(' / ')} °/s`;
+ // motion
+ const lm=Math.hypot(...S.lin),R=Math.max(rms('x'),rms('y'),rms('z'));
+ const rr=[rms('x'),rms('y'),rms('z')],mi=rr.indexOf(Math.max(...rr));
+ const hf=S.peak.f>4&&S.fft;
+ let st=!live||R<.25?'🟢 Stationary':R>5?'🔴 Rapid Movement':(hf&&R<3?'🟠 Vibrating':'🔵 Moving');
+ $('mst').textContent=st;
+ $('dom').textContent=R<.25?'—':'XYZ'[mi]+' axis';$('lvl').textContent=rr.map(lvl).join(' / ');
+ $('tot').textContent=f2(Math.hypot(...S.sig))+' m/s²';
+ $('sp2').textContent=`${f2(sp.v*3.6)} km/h · ${f2(sp.v)} m/s`;
+ const dn=dirName();$('mdir').textContent=dn.n;$('arrow').textContent=dn.a;$('arrow').style.transform=`rotate(${dn.deg}deg)`;
+ const g=S.gps;
+ $('dist').textContent=g?f2(S.dist)+' m':'GPS unavailable';
+ if(g){$('gs').textContent=g.sp!=null?f2(g.sp*3.6)+' km/h':'n/a';$('gh').textContent=g.hd!=null?g.hd.toFixed(0)+'°':'n/a';$('ga').textContent=g.acc.toFixed(0)+' m';$('gal').textContent=g.alt!=null?g.alt.toFixed(0)+' m':'n/a'}
+ $('fres').textContent=S.fft?`Dominant: ${S.peak.f.toFixed(2)} Hz · Peak: ${S.peak.m.toFixed(3)}`:'Analysis stopped — press Run FFT Analysis';
+ stats();diag();lapInfo();$('rinfo').textContent=(S.rec?(S.paused?'Paused':'● Recording'):'Not recording')+' · '+S.rows.length+' rows';
+ const tb=$('tb');if(S.rows.length!==+tb.dataset.n){tb.dataset.n=S.rows.length;
+  tb.innerHTML=S.rows.slice(-12).reverse().map(r=>'<tr>'+r.map(c=>'<td>'+c+'</td>').join('')+'</tr>').join('')}
+}
+$('rawc').onchange=e=>{S.raw=e.target.checked;S.v=[0,0,0]};$('isoc').onchange=e=>{S.iso=e.target.checked};
+// ---------- lap recorder + downloads ----------
+const LAP={on:false,len:5,laps:[],cur:[],t0:0,iso:'',n:0};
+const COLS=[['time_s','b'],['x_ms2','acc'],['y_ms2','acc'],['z_ms2','acc'],['mag_ms2','acc'],['gyro_x_dps','gyro'],['gyro_y_dps','gyro'],['gyro_z_dps','gyro'],['vx_kmh','spd'],['vy_kmh','spd'],['vz_kmh','spd'],['speed_kmh','spd'],['heading_deg','ori'],['roll_deg','ori'],['pitch_deg','ori'],['yaw_deg','ori'],['source','b']];
+const SIG=['x','y','z','mag','gyro_x','gyro_y','gyro_z'],r4=v=>+v.toFixed(4),pad=n=>String(n).padStart(3,'0');
+function lapPush(now){
+ if(!LAP.on)return;
+ if(LAP.cur.length&&(now-LAP.t0)/1000>=LAP.len)lapEnd();
+ if(!LAP.cur.length){LAP.t0=now;LAP.iso=new Date().toISOString()}
+ LAP.cur.push([+((now-LAP.t0)/1000).toFixed(3),...S.sig.map(r4),r4(B.m[N-1]),...S.gyro.map(r4),...S.v.map(v=>r4(v*3.6)),r4(curSpeed().v*3.6),r4(S.head),...S.rpy.map(r4),S.manual?'Manual':'Sensor']);
+}
+function lapEnd(partial){
+ const d=LAP.cur;LAP.cur=[];const T=d.length?d[d.length-1][0]:0;
+ if(d.length<8||!T)return;
+ const fs=(d.length-1)/T,M2=Math.pow(2,Math.ceil(Math.log2(d.length))),freq=[];
+ for(let k=0;k<M2/2;k++)freq.push(+(k*fs/M2).toFixed(4));
+ const sig={};
+ SIG.forEach((nm,j)=>{const c=d.map(r=>r[j+1]),mean=c.reduce((a,b)=>a+b,0)/c.length,re=new Array(M2).fill(0),im=new Array(M2).fill(0);
+  c.forEach((v,i)=>{re[i]=(v-mean)*(.5-.5*Math.cos(2*Math.PI*i/(c.length-1)))});fft(re,im);
+  const mg=[];let pk=1;for(let k=0;k<M2/2;k++){mg.push(Math.hypot(re[k],im[k])*4/c.length);if(k>1&&mg[k]>mg[pk])pk=k}
+  sig[nm]={mag:mg.map(v=>+v.toFixed(5)),peakHz:freq[pk],peak:mg[pk]}});
+ const lap={n:++LAP.n,start:LAP.iso,len:partial?+T.toFixed(2):LAP.len,fs:+fs.toFixed(2),rows:d,spec:{freq,sig}};
+ lap.st=SIG.map((nm,j)=>{const c=d.map(r=>r[j+1]),n=c.length,mean=c.reduce((a,b)=>a+b,0)/n,mn=Math.min(...c),mx=Math.max(...c);
+  return [nm,mean,Math.sqrt(c.reduce((a,b)=>a+(b-mean)**2,0)/n),mx-mn,mn,mx,sig[nm].peakHz,sig[nm].peak].map((v,i)=>i?r4(v):v)});
+ LAP.laps.push(lap);lapUI();
+}
+function lapUI(){
+ $('ltb').innerHTML=LAP.laps.slice().reverse().map(l=>`<tr><td>${l.n}</td><td>${l.start.slice(11,19)}</td><td>${l.rows.length}</td><td>${l.fs} Hz</td><td>${l.st[3][6]}</td><td>${l.st[3][2]}</td><td><button data-l="${l.n}" data-k="csv">CSV</button> <button data-l="${l.n}" data-k="json">JSON</button> <button data-l="${l.n}" data-k="fft">FFT</button></td></tr>`).join('');
+}
+function lapInfo(){$('linfo').textContent=LAP.on?`● Lap ${LAP.n+1}: ${LAP.cur.length?((performance.now()-LAP.t0)/1000).toFixed(1):'0.0'} / ${LAP.len} s · ${LAP.laps.length} laps${S.lastData?'':' · waiting for a signal'}`:`Idle · ${LAP.laps.length} laps`}
+const keep=()=>{const g=[...document.querySelectorAll('.lg:checked')].map(c=>c.value);return COLS.map((c,i)=>c[1]==='b'||g.includes(c[1])?i:-1).filter(i=>i>=0)};
+const lapCSV=(L,k)=>'lap,'+k.map(i=>COLS[i][0]).join(',')+'\n'+L.map(l=>l.rows.map(r=>l.n+','+k.map(i=>r[i]).join(',')).join('\n')).join('\n');
+const fftCSV=l=>'frequency_hz,'+SIG.map(n=>n+'_mag').join(',')+'\n'+l.spec.freq.map((f,i)=>f+','+SIG.map(n=>l.spec.sig[n].mag[i]).join(',')).join('\n');
+const sumCSV=L=>'lap,start,length_s,samples,rate_hz,signal,mean,rms_ac,peak_to_peak,min,max,peak_freq_hz,peak_mag\n'+L.flatMap(l=>l.st.map(t=>[l.n,l.start,l.len,l.rows.length,l.fs,...t].join(','))).join('\n');
+const lapJSON=(L,k)=>JSON.stringify({columns:k.map(i=>COLS[i][0]),laps:L.map(l=>({lap:l.n,start:l.start,length_s:l.len,rate_hz:l.fs,rows:l.rows.map(r=>k.map(i=>r[i])),fft:l.spec,stats:Object.fromEntries(l.st.map(t=>[t[0],{mean:t[1],rms_ac:t[2],peak_to_peak:t[3],min:t[4],max:t[5],peak_freq_hz:t[6],peak_mag:t[7]}]))}))},null,1);
+function zip(files){
+ const te=new TextEncoder(),T=new Uint32Array(256).map((_,n)=>{let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;return c>>>0});
+ const crc=b=>{let c=-1;for(const x of b)c=T[(c^x)&255]^(c>>>8);return ~c>>>0},parts=[],cen=[];let off=0;
+ for(const f of files){const nm=te.encode(f.n),d=te.encode(f.d),c=crc(d),h=new DataView(new ArrayBuffer(30)),e=new DataView(new ArrayBuffer(46));
+  h.setUint32(0,0x04034b50,true);h.setUint16(4,20,true);h.setUint32(14,c,true);h.setUint32(18,d.length,true);h.setUint32(22,d.length,true);h.setUint16(26,nm.length,true);
+  e.setUint32(0,0x02014b50,true);e.setUint16(4,20,true);e.setUint16(6,20,true);e.setUint32(16,c,true);e.setUint32(20,d.length,true);e.setUint32(24,d.length,true);e.setUint16(28,nm.length,true);e.setUint32(42,off,true);
+  parts.push(new Uint8Array(h.buffer),nm,d);cen.push(new Uint8Array(e.buffer),nm);off+=30+nm.length+d.length}
+ const cl=cen.reduce((a,b)=>a+b.length,0),z=new DataView(new ArrayBuffer(22));
+ z.setUint32(0,0x06054b50,true);z.setUint16(8,files.length,true);z.setUint16(10,files.length,true);z.setUint32(12,cl,true);z.setUint32(16,off,true);
+ return new Blob([...parts,...cen,new Uint8Array(z.buffer)],{type:'application/zip'});
+}
+async function saveFile(name,data,mime){
+ const blob=data instanceof Blob?data:new Blob([data],{type:mime});let dl=null;
+ try{dl=window.claude?await claude.use('downloads'):null}catch(e){}
+ if(dl){try{await dl.save({filename:name,data:blob});return}catch(e){if(e&&e.code==='declined')return}}
+ const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();
+}
+const some=f=>()=>{if(!LAP.laps.length){$('linfo').textContent='No laps yet: press Start Laps and wait for a lap to finish';return}f(LAP.laps,keep())};
+$('lstart').onclick=()=>{LAP.len=Math.max(1,+$('llen').value||5);LAP.cur=[];LAP.on=true};
+$('lstop').onclick=()=>{if(LAP.on){LAP.on=false;lapEnd(true)}};
+$('lclr').onclick=()=>{LAP.laps=[];LAP.cur=[];LAP.n=0;lapUI()};
+$('lacsv').onclick=some((L,k)=>saveFile('all_laps.csv',lapCSV(L,k),'text/csv'));
+$('lajson').onclick=some((L,k)=>saveFile('all_laps.json',lapJSON(L,k),'application/json'));
+$('lsum').onclick=some(L=>saveFile('laps_summary.csv',sumCSV(L),'text/csv'));
+$('lfft').onclick=some(L=>saveFile('all_laps_fft.csv','lap,'+fftCSV(L[0]).split('\n')[0]+'\n'+L.map(l=>fftCSV(l).split('\n').slice(1).map(r=>l.n+','+r).join('\n')).join('\n'),'text/csv'));
+$('lzip').onclick=some((L,k)=>saveFile(`laps_${LAP.len}s.zip`,zip([{n:'summary.csv',d:sumCSV(L)},{n:'all_laps.csv',d:lapCSV(L,k)},{n:'all_laps.json',d:lapJSON(L,k)},...L.flatMap(l=>[{n:`lap_${pad(l.n)}.csv`,d:lapCSV([l],k)},{n:`lap_${pad(l.n)}_fft.csv`,d:fftCSV(l)}])])));
+$('ltb').onclick=e=>{const b=e.target.closest('button');if(!b)return;const l=LAP.laps.find(x=>x.n==b.dataset.l),k=keep(),n=`lap_${pad(l.n)}`;
+ if(b.dataset.k==='csv')saveFile(n+'.csv',lapCSV([l],k),'text/csv');else if(b.dataset.k==='json')saveFile(n+'.json',lapJSON([l],k),'application/json');else saveFile(n+'_fft.csv',fftCSV(l),'text/csv')};
+$('dl').onclick=()=>saveFile('accelerometer_experiment.csv','Time_s,X_ms2,Y_ms2,Z_ms2,Vx_kmh,Vy_kmh,Vz_kmh,Speed_kmh,Direction_deg,Source\n'+S.rows.map(r=>r.join(',')).join('\n'),'text/csv');
+// ---------- 3D path ----------
+const PATH={on:false,pts:[],pos:[0,0,0],last:0,len:0,t0:0,yaw:-.7,pit:.5,zoom:1,play:false,f:0,tf:0,scr:[]},p3c=$('p3');
+const setT=(id,t)=>{const e=$(id);if(e.textContent!==t)e.textContent=t};
+function pathPush(now,dt){
+ if(!PATH.on)return;
+ for(let i=0;i<3;i++)PATH.pos[i]+=S.v[i]*dt;
+ PATH.len+=Math.hypot(...S.v)*dt;
+ if(PATH.pts.length&&now-PATH.last<50)return;PATH.last=now;
+ const v=S.v.map(x=>x*3.6);
+ PATH.pts.push({t:(now-PATH.t0)/1000,p:PATH.pos.slice(),v,s:Math.hypot(...v),L:PATH.len});
+ const sc=$('pscr');sc.max=PATH.pts.length-1;sc.value=sc.max;
+}
+function draw3D(){
+ const c=p3c,d=fit(c),g=c.getContext('2d'),W=c.width,H=c.height,P=PATH.pts,n=P.length;
+ g.clearRect(0,0,W,H);g.font=`${12*d}px sans-serif`;
+ if(PATH.play&&n){const t=performance.now();PATH.f+=PATH.tf?(t-PATH.tf)/1000*20:0;PATH.tf=t;if(PATH.f>=n-1){PATH.f=n-1;PATH.play=false;$('pplay').textContent='Play'}$('pscr').value=Math.floor(PATH.f)}else PATH.tf=0;
+ const lo=[0,0,0],hi=[0,0,0];P.forEach(q=>q.p.forEach((v,i)=>{if(v<lo[i])lo[i]=v;if(v>hi[i])hi[i]=v}));
+ const ctr=lo.map((v,i)=>(v+hi[i])/2),ext=Math.max(1,...hi.map((v,i)=>v-lo[i])),k=Math.min(W,H)*.36/ext*PATH.zoom;
+ const cy=Math.cos(PATH.yaw),sy=Math.sin(PATH.yaw),cp=Math.cos(PATH.pit),sp=Math.sin(PATH.pit);
+ const pr=(x,y,z)=>{x-=ctr[0];y-=ctr[1];z-=ctr[2];const a=x*cy-y*sy,b=x*sy+y*cy;return[W/2+a*k,H/2-(z*cp+b*sp)*k]};
+ const line=(a,b,col,w)=>{g.strokeStyle=col;g.lineWidth=w*d;g.beginPath();g.moveTo(...pr(...a));g.lineTo(...pr(...b));g.stroke()};
+ const dot=(q,col,r,l)=>{g.fillStyle=col;g.beginPath();g.arc(q[0],q[1],r*d,0,7);g.fill();if(l){g.fillStyle='#e8eefc';g.fillText(l,q[0]+8*d,q[1]-8*d)}};
+ const raw=ext/4,mg=Math.pow(10,Math.floor(Math.log10(raw))),st=mg*(raw/mg>=5?5:raw/mg>=2?2:1),fz=lo[2];
+ const x0=Math.floor(lo[0]/st)*st,x1=Math.ceil(hi[0]/st)*st,y0=Math.floor(lo[1]/st)*st,y1=Math.ceil(hi[1]/st)*st;
+ for(let x=x0;x<=x1+1e-9;x+=st)line([x,y0,fz],[x,y1,fz],'#ffffff18',1);
+ for(let y=y0;y<=y1+1e-9;y+=st)line([x0,y,fz],[x1,y,fz],'#ffffff18',1);
+ [['X','#ff5d73',[st,0,0]],['Y','#3ee89a',[0,st,0]],['Z','#4da3ff',[0,0,st]]].forEach(([l,col,e])=>{line([0,0,0],e,col,2);g.fillStyle=col;const q=pr(...e);g.fillText(l,q[0]+4*d,q[1]-4*d)});
+ g.fillStyle='#8b9ab8';g.fillText(`grid ${st} m`,W-70*d,H-10*d);
+ const smax=Math.max(1e-6,...P.map(q=>q.s));PATH.scr=P.map(q=>pr(...q.p));
+ for(let i=1;i<n;i++){g.strokeStyle=`hsl(${220-200*P[i].s/smax},90%,60%)`;g.lineWidth=2.5*d;g.beginPath();g.moveTo(...PATH.scr[i-1]);g.lineTo(...PATH.scr[i]);g.stroke()}
+ if(n){
+  const q=P[Math.min(n-1,+$('pscr').value||0)],e=P[n-1],f=a=>a.map(v=>v.toFixed(2)).join(' / ');
+  dot(PATH.scr[0],'#3ee89a',6,'Start');if(n>1)dot(PATH.scr[n-1],'#ff5d73',6,'End');
+  line(q.p,[q.p[0],q.p[1],fz],'#ffffff77',1);dot(pr(...q.p),'#fff',6);
+  setT('qt',q.t.toFixed(2)+' s');setT('qp',f(q.p)+' m');setT('qs',q.s.toFixed(2)+' km/h');setT('qv',f(q.v)+' km/h');
+  setT('qse','(0, 0, 0) → ('+e.p.map(v=>v.toFixed(2)).join(', ')+') m');setT('ql',q.L.toFixed(2)+' m path · '+Math.hypot(...q.p).toFixed(2)+' m from start');
+ }else{g.fillStyle='#8b9ab8';g.textAlign='center';g.fillText('Press Start Path, then move the phone',W/2,H-30*d);g.textAlign='left'}
+ const gr=g.createLinearGradient(10*d,0,90*d,0);gr.addColorStop(0,'hsl(220,90%,60%)');gr.addColorStop(1,'hsl(20,90%,60%)');
+ g.fillStyle=gr;g.fillRect(10*d,H-18*d,80*d,6*d);g.fillStyle='#8b9ab8';g.fillText(`slow → ${n&&smax>1e-3?smax.toFixed(1):'0'} km/h`,98*d,H-11*d);
+ setT('pinfo',(PATH.on?'● Tracking · ':'Idle · ')+n+' points');
+}
+const ptr=new Map();let pd=0,mv=0;
+p3c.onpointerdown=e=>{p3c.setPointerCapture(e.pointerId);ptr.set(e.pointerId,[e.clientX,e.clientY]);pd=0;mv=0};
+p3c.onpointermove=e=>{const o=ptr.get(e.pointerId);if(!o)return;
+ if(ptr.size===1){PATH.yaw+=(e.clientX-o[0])*.01;PATH.pit=Math.max(-1.4,Math.min(1.4,PATH.pit+(e.clientY-o[1])*.01));mv+=Math.abs(e.clientX-o[0])+Math.abs(e.clientY-o[1])}
+ ptr.set(e.pointerId,[e.clientX,e.clientY]);
+ if(ptr.size===2){const [a,b]=[...ptr.values()],dd=Math.hypot(a[0]-b[0],a[1]-b[1]);if(pd)PATH.zoom=Math.max(.3,Math.min(8,PATH.zoom*dd/pd));pd=dd}};
+p3c.onpointerup=p3c.onpointercancel=e=>{
+ if(ptr.size===1&&mv<6&&!PATH.on){const r=p3c.getBoundingClientRect(),x=(e.clientX-r.left)*p3c.width/r.width,y=(e.clientY-r.top)*p3c.height/r.height;let b=-1,m=1e9;PATH.scr.forEach((q,i)=>{const dd=Math.hypot(q[0]-x,q[1]-y);if(dd<m){m=dd;b=i}});if(b>=0)$('pscr').value=b}
+ ptr.delete(e.pointerId);pd=0};
+p3c.onwheel=e=>{e.preventDefault();PATH.zoom=Math.max(.3,Math.min(8,PATH.zoom*Math.exp(-e.deltaY*.001)))};
+const pReset=()=>{PATH.pts=[];PATH.pos=[0,0,0];PATH.len=0;PATH.play=false;PATH.f=0;$('pplay').textContent='Play';$('pscr').max=0;$('pscr').value=0;['qt','qp','qs','qv','qse','ql'].forEach(i=>$(i).textContent='—')};
+$('pstart').onclick=()=>{pReset();S.v=[0,0,0];PATH.t0=performance.now();PATH.last=0;PATH.on=true};
+$('pstop').onclick=()=>{PATH.on=false};
+$('pclr').onclick=()=>{PATH.on=false;pReset()};
+$('pview').onclick=()=>{PATH.yaw=-.7;PATH.pit=.5;PATH.zoom=1};
+$('pscr').oninput=()=>{PATH.play=false;$('pplay').textContent='Play'};
+$('pplay').onclick=()=>{if(!PATH.pts.length)return;PATH.on=false;PATH.play=!PATH.play;$('pplay').textContent=PATH.play?'Pause':'Play';if(PATH.play){const v=+$('pscr').value;PATH.f=v>=PATH.pts.length-1?0:v;PATH.tf=0}};
+// ---------- connection check ----------
+function diag(){
+ const fr=window.self!==window.top,sec=window.isSecureContext,live=S.lastData&&performance.now()-S.lastData<1000;
+ const set=(id,ok,t)=>{const e=$(id);e.textContent=t;e.style.color=ok?'#3ee89a':'#ff8a9a'};
+ set('d1',sec,sec?'Yes':'No: sensors are blocked');set('d2',!fr,fr?'Yes: frames block sensors':'No');
+ set('d3',!!window.DeviceMotionEvent,window.DeviceMotionEvent?'Yes':'No');
+ set('d4',D.perm==='granted'||D.perm==='not needed',D.perm);set('d5',D.ev>0,String(D.ev));
+ $('dsum').textContent=live&&!S.manual?'✓ sensor connected':fr?'⚠ page is inside a frame, sensors are likely blocked':!sec?'⚠ page is not secure (HTTPS)':'tap to see why the sensor may not connect';
+ let h='';
+ if(!sec)h='Open the page over HTTPS.';
+ else if(fr)h='This page is inside a frame (such as the Claude app or artifact viewer), and browsers block motion sensors in frames. Tap Open in full page, or host the downloaded file (GitHub Pages or Netlify Drop) and open that link in Chrome or Safari.';
+ else if(D.perm==='denied')h='Motion access was denied. iPhone: Settings, Safari, Motion & Orientation Access. Android: Chrome site settings, Motion sensors, Allow.';
+ else if(D.tried&&!D.ev)h='No sensor events arrived. Allow Motion sensors for this site, turn off battery saver, and check the phone has an accelerometer.';
+ $('dhelp').textContent=h;
+}
+$('dopen').onclick=()=>window.open(location.href,'_blank');
+if(window.self===window.top)$('dopen').style.display='none';
+// ---------- spectrogram + statistics ----------
+let sgT=0;
+function drawSG(ts){
+ const c=$('sg');fit(c);if(ts-sgT<80||!S.fft)return;sgT=ts;
+ const g=c.getContext('2d'),W=c.width,H=c.height,dx=Math.max(1,Math.round(2*(devicePixelRatio||1))),mx=Math.max(...spec,.5),n=N/2;
+ g.drawImage(c,-dx,0);
+ for(let y=0;y<H;y+=2){const v=Math.min(1,spec[Math.min(n-1,Math.floor((1-y/H)*n))]/mx);g.fillStyle=`hsl(${260-v*220},90%,${8+v*52}%)`;g.fillRect(W-dx,y,dx,2)}
+}
+function stats(){
+ const d=B[$('src').value],n=d.length,mean=d.reduce((a,b)=>a+b,0)/n,rm=Math.sqrt(d.reduce((a,b)=>a+(b-mean)**2,0)/n),f=S.peak.f;
+ $('s1').textContent=rm.toFixed(2)+' m/s²';$('s2').textContent=(Math.max(...d)-Math.min(...d)).toFixed(2)+' m/s²';$('s3').textContent=mean.toFixed(2)+' m/s²';
+ $('s4').textContent=S.fft&&f>0?(1/f).toFixed(2)+' s':'—';$('s5').textContent=((S.fs||50)/N).toFixed(3)+' Hz/bin';
+}
+// ---------- manual signal generator ----------
+const M={ax:3,fx:2,ay:2,fy:5,az:1.5,fz:8,nz:.1,hd:0,rl:0,pt:0,w:'sine',g:true},ph={x:0,y:0,z:0};
+const defs=[['ax','X amplitude','m/s²',0,20,.1],['fx','X frequency','Hz',.1,24,.1],['ay','Y amplitude','m/s²',0,20,.1],['fy','Y frequency','Hz',.1,24,.1],['az','Z amplitude','m/s²',0,20,.1],['fz','Z frequency','Hz',.1,24,.1],['nz','Noise level','m/s²',0,3,.05],['hd','Heading','°',0,359,1],['rl','Roll','°',-90,90,1],['pt','Pitch','°',-90,90,1]];
+$('mc').innerHTML=defs.map(([k,l,u,a,b,st])=>`<div class="ctl"><span>${l} (${u})</span><input type="number" id="n_${k}" min="${a}" max="${b}" step="${st}" value="${M[k]}"><input type="range" id="r_${k}" min="${a}" max="${b}" step="${st}" value="${M[k]}" aria-label="${l}"></div>`).join('');
+defs.forEach(([k,,,a,b])=>{const n=$('n_'+k),r=$('r_'+k);
+ const set=v=>{v=parseFloat(v);if(!isNaN(v))M[k]=Math.min(b,Math.max(a,v))};
+ r.oninput=()=>{set(r.value);n.value=M[k]};n.oninput=()=>{set(n.value);r.value=M[k]}});
+$('mw').onchange=e=>{M.w=e.target.value};$('mg').onchange=e=>{M.g=e.target.checked};
+const gauss=()=>(Math.random()+Math.random()+Math.random()-1.5)*2;
+const wave=(p,t)=>{const f=p-Math.floor(p);return t==='sine'?Math.sin(2*Math.PI*p):t==='square'?(f<.5?1:-1):t==='triangle'?1-4*Math.abs(f-.5):t==='saw'?2*f-1:t==='dc'?1:gauss()};
+let mt=0,mlast=0;
+function mtick(){
+ const now=performance.now(),dt=Math.min((now-mlast)/1000,.2);mlast=now;
+ const v=['x','y','z'].map(k=>{ph[k]+=M['f'+k]*dt;return M['a'+k]*wave(ph[k],M.w)+M.nz*gauss()});
+ S.head=M.hd;S.rpy=[M.rl,M.pt,(360-M.hd)%360];
+ onMotion({_m:1,accelerationIncludingGravity:{x:v[0],y:v[1],z:v[2]+(M.g?9.81:0)},acceleration:{x:v[0],y:v[1],z:v[2]},rotationRate:{alpha:0,beta:0,gamma:0}});
+}
+$('mon').onchange=e=>{
+ S.manual=e.target.checked;S.v=[0,0,0];S.last=0;clearInterval(mt);
+ if(S.manual){mlast=performance.now();mt=setInterval(mtick,20)}
+ else{S.lastData=0;$('cst').textContent='Not connected'}
+ $('mbody').style.opacity=S.manual?1:.6;
+};
+const PR={walk:{ax:1,fx:1.8,ay:2.5,fy:1.8,az:4,fz:3.6,nz:.2},vib:{ax:.8,fx:18,ay:.6,fy:18,az:1.2,fz:18,nz:.1},two:{ax:3,fx:3,ay:2,fy:9,az:1,fz:15,nz:.05},shake:{ax:8,fx:4.5,ay:6,fy:6,az:5,fz:5.5,nz:.5},still:{ax:0,fx:2,ay:0,fy:2,az:0,fz:2,nz:.05}};
+document.querySelectorAll('[data-p]').forEach(b=>b.onclick=()=>{
+ Object.assign(M,PR[b.dataset.p],{w:'sine'});$('mw').value='sine';
+ defs.forEach(([k])=>{$('n_'+k).value=M[k];$('r_'+k).value=M[k]});
+ const m=$('mon');if(!m.checked){m.checked=true;m.onchange({target:m})}S.fft=true});
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
